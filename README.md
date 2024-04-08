@@ -1,7 +1,7 @@
 # Advanced Data Management 
 
 ### A1
-	Based on the Data Analysis provided on the DVD rental database. I decided to create a business report for the total weekly sales. The sales will be ordered by earliest to latest date. The total amount per week and beginning week dates are added to the column
+Based on the Data Analysis provided on the DVD rental database. I decided to create a business report for the total weekly sales. The sales will be ordered by earliest to latest date. The total amount per week and beginning week dates are added to the column
  
  A2.
 	Four table from the database were incorporated. The 'store_id' utilized an integer type, since each store is identified by either '1' or '2'. The 'payment_date' is identified by TIMESTAMP, YYYY-MM-DD for when the payment was received. The 'amount' included only the last two decimal places, for the purchase of the rental. The 'rental' table includes 'rental_id' as an INT to show the unique identifier for each rental Also,  the 'rental_date' as a TIMESTAMP for the date movie was rented. 
