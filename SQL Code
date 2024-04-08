@@ -1,0 +1,120 @@
+-- A4 Custom transformation for detail table 
+``` CREATE OR REPLACE FUNCTION ExtractDate(ts TIMESTAMP)
+RETURNS DATE AS $$
+BEGIN
+    RETURN ts::DATE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Part C: Create Detailed Table (sales_report)
+DROP TABLE IF EXISTS sales_report;
+CREATE TABLE sales_report(
+    store_id INT,
+    payment_date TIMESTAMP,
+    rental_id INT,
+	rental_date TIMESTAMP,
+	amount DECIMAL(10,2)
+);
+
+-- Part D: Extracting Raw Data for Detailed Table (sales_report)
+INSERT INTO sales_report(
+    store_id, 
+    payment_date,
+    rental_id,
+    rental_date,
+    amount
+)
+SELECT 
+    s.store_id,
+    ExtractDate(p.payment_date) AS payment_date,
+    r.rental_id,
+    r.rental_date,
+    p.amount
+FROM payment p
+INNER JOIN rental r ON p.rental_id = r.rental_id
+INNER JOIN inventory i ON r.inventory_id = i.inventory_id
+INNER JOIN store s ON i.store_id = s.store_id
+GROUP BY s.store_id, ExtractDate(p.payment_date), r.rental_id, r.rental_date, p.amount;
+-- Summary table (weekly_average_sales)
+DROP TABLE IF EXISTS weekly_sales;
+CREATE TABLE weekly_sales(
+    week_start_date TIMESTAMP,
+    total_sales_per_week DECIMAL(10,2)
+);
+
+-- Part E: Creating Trigger Function for Sales Report
+
+CREATE OR REPLACE FUNCTION update_weekly_sales()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Check if a row for the week already exists
+    IF EXISTS (SELECT 1 FROM weekly_sales WHERE week_start_date = date_trunc('week', NEW.payment_date)) THEN
+        -- Update the existing row
+        UPDATE weekly_sales
+        SET total_sales_per_week = total_sales_per_week + NEW.amount
+        WHERE week_start_date = date_trunc('week', NEW.payment_date);
+    ELSE
+        -- Insert a new row
+        INSERT INTO weekly_sales(week_start_date, total_sales_per_week)
+        VALUES(date_trunc('week', NEW.payment_date), NEW.amount);
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger on the detailed table of the report that updates summary table as data is added to the detailed table.
+CREATE TRIGGER sales_report_trigger
+AFTER INSERT ON sales_report
+FOR EACH ROW
+EXECUTE FUNCTION update_weekly_sales();
+
+
+-- Part F: Clear contents for both detailed and summary. Then refresh data in both tables. 
+CREATE OR REPLACE PROCEDURE refresh_data()
+LANGUAGE plpgsql AS $$
+BEGIN
+    DELETE FROM sales_report;
+    DELETE FROM weekly_sales;
+	INSERT INTO sales_report(
+        store_id, 
+   		payment_date,
+    	rental_id,
+    	rental_date,
+    	amount
+    	)
+    SELECT 
+    s.store_id,
+    ExtractDate(p.payment_date) AS payment_date,
+    r.rental_id,
+    r.rental_date,
+    p.amount
+FROM payment p
+INNER JOIN rental r ON p.rental_id = r.rental_id
+INNER JOIN inventory i ON r.inventory_id = i.inventory_id
+INNER JOIN store s ON i.store_id = s.store_id
+GROUP BY s.store_id, ExtractDate(p.payment_date), r.rental_id, r.rental_date, p.amount;
+	INSERT INTO weekly_sales(week_start_date, total_sales_per_week)
+	SELECT DISTINCT date_trunc('week', payment_date), SUM(amount)
+	FROM sales_report
+	GROUP BY date_trunc('week', payment_date);
+END;
+$$;
+
+CALL refresh_data();
+
+-- Verify SQL code accuracy 
+SELECT * FROM sales_report;
+SELECT * FROM weekly_sales;
+
+INSERT INTO detailed (column1, column2) VALUES ('Test', 123);
+
+-- View used for querying data as if it were a table.
+CREATE VIEW weekly_sales_ordered AS
+SELECT * FROM weekly_sales
+ORDER BY week_start_date ASC;
+
+SELECT * FROM weekly_sales_ordered;
+```
+
+
