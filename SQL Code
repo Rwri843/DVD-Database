@@ -1,5 +1,5 @@
 -- A4 Custom transformation for detail table 
-``` CREATE OR REPLACE FUNCTION ExtractDate(ts TIMESTAMP)
+CREATE OR REPLACE FUNCTION ExtractDate(ts TIMESTAMP)
 RETURNS DATE AS $$
 BEGIN
     RETURN ts::DATE;
@@ -115,6 +115,6 @@ SELECT * FROM weekly_sales
 ORDER BY week_start_date ASC;
 
 SELECT * FROM weekly_sales_ordered;
-```
+
 
 
